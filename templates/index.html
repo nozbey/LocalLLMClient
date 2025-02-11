@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT Arayüzü</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        #chat-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background: white;
+            white-space: pre-line;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background: #007bff;
+            color: white;
+            text-align: right;
+        }
+        .bot-message {
+            background: #e9ecef;
+            color: black;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #444;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        .copy-btn:hover {
+            background: #666;
+        }
+        #message-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        #message-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container"></div>
+    <form id="message-form">
+        <input type="text" id="message-input" placeholder="Mesajınızı yazın...">
+        <button type="submit">Gönder</button>
+    </form>
+    <script>
+        $(document).ready(function () {
+            $('#message-form').submit(function (event) {
+                event.preventDefault();
+                let userMessage = $('#message-input').val().trim();
+                if (userMessage === '') return;
+
+                $('#chat-container').append(`<div class='message user-message'>${userMessage}</div>`);
+                $('#message-input').val('');
+                $('#chat-container').append("<div class='message bot-message'>Yanıt bekleniyor...</div>");
+
+                $.ajax({
+                    url: '/api/chat',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ message: userMessage }),
+                    success: function (response) {
+                        $('.bot-message').last().remove();
+                        let botResponse = response.response;
+                        botResponse = botResponse.replace(/\n\n/g, "<br><br>");
+                        botResponse = botResponse.replace(/(\d+)\.\s(.*?)<br>/g, "<br><strong>$1.</strong> $2<br>");
+                        botResponse = botResponse.replace(/```(.*?)\n([\s\S]*?)\n```/g, function(match, lang, code) {
+                            return `<pre><button class='copy-btn' onclick='copyToClipboard(this)'>Kopyala</button><code class='language-${lang}'>${code}</code></pre>`;
+                        });
+                        $('#chat-container').append(`<div class='message bot-message'>${botResponse}</div>`);
+                        hljs.highlightAll();
+                    },
+                    error: function () {
+                        $('.bot-message').last().remove();
+                        $('#chat-container').append("<div class='message bot-message'>Yanıt alınamadı.</div>");
+                    }
+                });
+            });
+        });
+
+        function copyToClipboard(button) {
+            let codeBlock = button.nextElementSibling;
+            navigator.clipboard.writeText(codeBlock.innerText).then(() => {
+                button.innerText = 'Kopyalandı!';
+                setTimeout(() => button.innerText = 'Kopyala', 2000);
+            });
+        }
+    </script>
+</body>
+</html>
