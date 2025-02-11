@@ -1,2 +1,0 @@
-# LocalLLMClient
-Local LLM Client
